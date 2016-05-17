@@ -4,6 +4,10 @@
 .. image:: https://img.shields.io/github/license/jgorset/facepy.svg
 .. image:: https://img.shields.io/pypi/v/facepy.svg
 
+** WARNING **: this port of facepy using async is incomplete, if you want to contribute you're very welcome: fork this project and send a pull request!
+
+I'm currently using the GraphAPI.search() in production, that works. Everything else is untested.
+
 Usage
 -----
 

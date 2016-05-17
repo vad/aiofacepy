@@ -1,26 +1,30 @@
+import asyncio
+import hashlib
+import hmac
+from decimal import Decimal
+
 try:
     import simplejson as json
 except ImportError:
     import json  # flake8: noqa
-import requests
-import hashlib
-import hmac
-
 try:
     import urllib.parse as urlparse
     from urllib.parse import urlencode
 except ImportError:
     from urllib import urlencode
     import urlparse
-from decimal import Decimal
 
+import aiohttp
 import six
 
 from facepy.exceptions import *
 
+loop = asyncio.get_event_loop()
+
 
 class GraphAPI(object):
-    def __init__(self, oauth_token=False, url='https://graph.facebook.com', verify_ssl_certificate=True, appsecret=False, timeout=None, version=None):
+    def __init__(self, oauth_token=False, url='https://graph.facebook.com', verify_ssl_certificate=True,
+                 appsecret=False, timeout=None, version=None, proxy=None):
         """
         Initialize GraphAPI with an OAuth access token.
 
@@ -28,12 +32,19 @@ class GraphAPI(object):
         :param version: A string with version ex. '2.2'.
         """
         self.oauth_token = oauth_token
-        self.session = requests.session()
+
+        if proxy:
+            connector = aiohttp.ProxyConnector(verify_ssl=verify_ssl_certificate, proxy=proxy, conn_timeout=timeout)
+        else:
+            connector = aiohttp.TCPConnector(verify_ssl=verify_ssl_certificate, conn_timeout=timeout)
+
+        self.session = aiohttp.ClientSession(connector=connector)
         self.url = url.strip('/')
-        self.verify_ssl_certificate = verify_ssl_certificate
         self.appsecret = appsecret
-        self.timeout = timeout
         self.version = version
+
+    def __del__(self):
+        self.session.close()
 
     @classmethod
     def for_application(self, id, secret_key, api_version=None):
@@ -48,7 +59,7 @@ class GraphAPI(object):
         access_token = get_application_access_token(id, secret_key, api_version=api_version)
         return GraphAPI(access_token, version=api_version)
 
-    def get(self, path='', page=False, retry=3, **options):
+    async def get(self, path='', page=False, retry=3, **options):
         """
         Get an item from the Graph API.
 
@@ -64,20 +75,14 @@ class GraphAPI(object):
         See `Facebook's Graph API documentation <http://developers.facebook.com/docs/reference/api/>`_
         for an exhaustive list of parameters.
         """
-        response = self._query(
-            method='GET',
-            path=path,
-            data=options,
-            page=page,
-            retry=retry
-        )
+        response = await self._query(method='GET', path=path, data=options, page=page, retry=retry)
 
         if response is False:
             raise FacebookError('Could not get "%s".' % path)
 
         return response
 
-    def post(self, path='', retry=0, **data):
+    async def post(self, path='', retry=0, **data):
         """
         Post an item to the Graph API.
 
@@ -88,7 +93,7 @@ class GraphAPI(object):
         See `Facebook's Graph API documentation <http://developers.facebook.com/docs/reference/api/>`_
         for an exhaustive list of options.
         """
-        response = self._query(
+        response = await self._query(
             method='POST',
             path=path,
             data=data,
@@ -100,14 +105,14 @@ class GraphAPI(object):
 
         return response
 
-    def delete(self, path, retry=3):
+    async def delete(self, path, retry=3):
         """
         Delete an item in the Graph API.
 
         :param path: A string describing the path to the item.
         :param retry: An integer describing how many times the request may be retried.
         """
-        response = self._query(
+        response = await self._query(
             method='DELETE',
             path=path,
             retry=retry
@@ -118,7 +123,7 @@ class GraphAPI(object):
 
         return response
 
-    def search(self, term, type, page=False, retry=3, **options):
+    async def search(self, term, type, page=False, retry=3, **options):
         """
         Search for an item in the Graph API.
 
@@ -144,9 +149,7 @@ class GraphAPI(object):
             'type': type,
         }, **options)
 
-        response = self._query('GET', 'search', options, page, retry)
-
-        return response
+        return await self._query('GET', 'search', options, page, retry)
 
     def batch(self, requests):
         """
@@ -156,6 +159,7 @@ class GraphAPI(object):
 
         Yields a list of responses and/or exceptions.
         """
+        raise NotImplementedError()
 
         for request in requests:
             if 'body' in request:
@@ -198,7 +202,7 @@ class GraphAPI(object):
                 exception.request = request
                 yield exception
 
-    def fql(self, query, retry=3):
+    async def fql(self, query, retry=3):
         """
         Use FQL to powerfully extract data from Facebook.
 
@@ -208,13 +212,13 @@ class GraphAPI(object):
         See `Facebook's FQL documentation <http://developers.facebook.com/docs/reference/fql/>`_
         for an exhaustive list of details.
         """
-        return self._query(
+        return await self._query(
             method='GET',
             path='fql?%s' % urlencode({'q': query}),
             retry=retry
         )
 
-    def _query(self, method, path, data=None, page=False, retry=0):
+    async def _query(self, method, path, data=None, page=False, retry=0):
         """
         Fetch an object from the Graph API and parse the output, returning a tuple where the first item
         is the object yielded by the Graph API and the second is the URL for the next page of results, or
@@ -236,7 +240,7 @@ class GraphAPI(object):
                 (k.replace('__', ':'), v) for k, v in data.items())
         data = data or {}
 
-        def load(method, url, data):
+        async def load(method, url, data):
             for key in data:
                 value = data[key]
 
@@ -245,10 +249,7 @@ class GraphAPI(object):
 
             try:
                 if method in ['GET', 'DELETE']:
-                    response = self.session.request(
-                        method, url, params=data, allow_redirects=True,
-                        verify=self.verify_ssl_certificate, timeout=self.timeout
-                    )
+                    response = await self.session.request(method, url, params=data, allow_redirects=True)
 
                 if method in ['POST', 'PUT']:
                     files = {}
@@ -260,12 +261,9 @@ class GraphAPI(object):
                     for key in files:
                         data.pop(key)
 
-                    response = self.session.request(
-                        method, url, data=data, files=files,
-                        verify=self.verify_ssl_certificate, timeout=self.timeout
-                    )
+                    response = await self.session.request(method, url, data=data, files=files)
 
-                if 500 <= response.status_code < 600:
+                if 500 <= response.status < 600:
                     # Facebook 5XX errors usually come with helpful messages
                     # as a JSON object describing the problem with the request.
                     # If this is the case, an error will be raised and we just
@@ -273,19 +271,20 @@ class GraphAPI(object):
                     # with the Ads API.
                     # This will raise an exception if a JSON-like error object
                     # comes in the response.
-                    self._parse(response.content)
+                    self._parse(await response.text())
                     # If Facebook does not provide any JSON-formatted error
                     # but just a plain-text, useless error, we'll just inform
                     # about a Facebook Internal errror occurred.
                     raise FacebookError(
                         'Internal Facebook error occurred',
-                        response.status_code
+                        response.status
                     )
 
-            except requests.RequestException as exception:
+            # except requests.RequestException as exception:
+            except Exception as exception:
                 raise HTTPError(exception)
 
-            result = self._parse(response.content)
+            result = self._parse(await response.text())
 
             try:
                 next_url = result['paging']['next']
@@ -294,16 +293,16 @@ class GraphAPI(object):
 
             return result, next_url
 
-        def paginate(method, url, data):
-            while url:
-                result, url = load(method, url, data)
-
-                # Reset pagination parameters.
-                for key in ['offset', 'until', 'since']:
-                    if key in data:
-                        del data[key]
-
-                yield result
+        # def paginate(method, url, data):
+        #     while url:
+        #         result, url = loop.run_until_complete(load(method, url, data))
+        #
+        #         # Reset pagination parameters.
+        #         for key in ['offset', 'until', 'since']:
+        #             if key in data:
+        #                 del data[key]
+        #
+        #         yield result
 
         # Convert option lists to comma-separated values.
         for key in data:
@@ -326,13 +325,14 @@ class GraphAPI(object):
             data['appsecret_proof'] = self._generate_appsecret_proof()
 
         try:
-            if page:
-                return paginate(method, url, data)
-            else:
-                return load(method, url, data)[0]
+            # if page:
+            #     return paginate(method, url, data)
+            # else:
+            loaded = await load(method, url, data)
+            return loaded[0]
         except FacepyError:
             if retry:
-                return self._query(method, path, data, page, retry - 1)
+                return await self._query(method, path, data, page, retry - 1)
             else:
                 raise
 
