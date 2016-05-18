@@ -16,7 +16,7 @@ setup(
     author='Davide Setti',
     author_email='davide.setti@gmail.com',
     url='http://github.com/vad/aiofacepy',
-    packages=['facepy'],
+    packages=['aiofacepy'],
     install_requires=['aiohttp >=0.20', 'six >= 1.6'],
     classifiers=[
         'Intended Audience :: Developers',
