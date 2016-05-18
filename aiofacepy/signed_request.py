@@ -9,7 +9,7 @@ import time
 
 from datetime import datetime
 
-from facepy.exceptions import *
+from aiofacepy.exceptions import *
 
 
 class SignedRequest(object):

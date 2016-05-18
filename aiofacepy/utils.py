@@ -5,7 +5,7 @@ try:
 except ImportError:
     from urlparse import parse_qs
 
-from facepy.graph_api import GraphAPI
+from aiofacepy.graph_api import GraphAPI
 
 
 def get_extended_access_token(access_token, application_id, application_secret_key, api_version=None):

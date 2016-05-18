@@ -17,7 +17,7 @@ except ImportError:
 import aiohttp
 import six
 
-from facepy.exceptions import *
+from aiofacepy.exceptions import *
 
 loop = asyncio.get_event_loop()
 
@@ -54,7 +54,7 @@ class GraphAPI(object):
         :param id: An integer describing a Facebook application.
         :param secret_key: A String describing the Facebook application's secret key.
         """
-        from facepy.utils import get_application_access_token
+        from aiofacepy.utils import get_application_access_token
 
         access_token = get_application_access_token(id, secret_key, api_version=api_version)
         return GraphAPI(access_token, version=api_version)

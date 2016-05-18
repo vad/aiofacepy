@@ -5,7 +5,7 @@ except ImportError:
     import pickle
 
 from nose.tools import *
-from facepy import *
+from aiofacepy import *
 
 TEST_ERROR_OBJ = {
   'error': {

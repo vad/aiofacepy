@@ -4,7 +4,7 @@
 from datetime import datetime, timedelta
 from nose.tools import *
 
-from facepy import SignedRequest
+from aiofacepy import SignedRequest
 
 
 TEST_ACCESS_TOKEN = '181259711925270|1570a553ad6605705d1b7a5f.1-499729129|8XqMRhCWDKtpG-i_zRkHBDSsqqk'

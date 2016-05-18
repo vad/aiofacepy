@@ -9,17 +9,16 @@ history = open('CHANGELOG.md').read()
 # import the file that contains the version specifically.
 
 setup(
-    name='facepy',
-    version='1.0.8',  # flake8: noqa
-    description='Facepy makes it really easy to use Facebook\'s Graph API',
+    name='aiofacepy',
+    version='0.0.1',  # flake8: noqa
+    description='Asyncio based facepy port',
     long_description=readme + '\n\n' + history,
-    author='Johannes Gorset',
-    author_email='jgorset@gmail.com',
-    url='http://github.com/jgorset/facepy',
+    author='Davide Setti',
+    author_email='davide.setti@gmail.com',
+    url='http://github.com/vad/aiofacepy',
     packages=['facepy'],
-    install_requires=['requests >=0.8', 'six >= 1.6'],
+    install_requires=['aiohttp >=0.20', 'six >= 1.6'],
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'License :: OSI Approved :: MIT License',

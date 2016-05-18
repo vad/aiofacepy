@@ -8,7 +8,7 @@ from nose.tools import *
 from mock import patch, MagicMock
 from requests.exceptions import ConnectionError
 
-from facepy import GraphAPI
+from aiofacepy import GraphAPI
 
 
 patch = patch('requests.session')

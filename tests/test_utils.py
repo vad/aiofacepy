@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from facepy import (
+from aiofacepy import (
     get_application_access_token,
     get_extended_access_token,
     GraphAPI
