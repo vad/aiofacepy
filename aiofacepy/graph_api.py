@@ -34,7 +34,7 @@ class GraphAPI(object):
         self.oauth_token = oauth_token
 
         if proxy:
-            connector = aiohttp.ProxyConnector(verify_ssl=verify_ssl_certificate, proxy=proxy, conn_timeout=timeout)
+            connector = aiohttp.ProxyConnector(proxy=proxy, conn_timeout=timeout)
         else:
             connector = aiohttp.TCPConnector(verify_ssl=verify_ssl_certificate, conn_timeout=timeout)
 
