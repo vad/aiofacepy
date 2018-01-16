@@ -33,15 +33,14 @@ class GraphAPI(object):
         """
         self.oauth_token = oauth_token
 
-        if proxy:
-            connector = aiohttp.ProxyConnector(proxy=proxy, conn_timeout=timeout)
-        else:
-            connector = aiohttp.TCPConnector(verify_ssl=verify_ssl_certificate, conn_timeout=timeout)
+        connector = aiohttp.TCPConnector(verify_ssl=verify_ssl_certificate if not proxy else None)
 
         self.session = aiohttp.ClientSession(connector=connector)
         self.url = url.strip('/')
         self.appsecret = appsecret
         self.version = version
+        self.proxy = proxy
+        self.timeout = timeout
 
     def __del__(self):
         self.session.close()
@@ -249,7 +248,8 @@ class GraphAPI(object):
 
             try:
                 if method in ['GET', 'DELETE']:
-                    response = await self.session.request(method, url, params=data, allow_redirects=True)
+                    response = await self.session.request(
+                        method, url, params=data, allow_redirects=True, proxy=self.proxy, timeout=self.timeout)
 
                 if method in ['POST', 'PUT']:
                     files = {}
@@ -261,7 +261,8 @@ class GraphAPI(object):
                     for key in files:
                         data.pop(key)
 
-                    response = await self.session.request(method, url, data=data, files=files)
+                    response = await self.session.request(
+                        method, url, data=data, files=files, proxy=self.proxy, timeout=self.timeout)
 
                 if 500 <= response.status < 600:
                     # Facebook 5XX errors usually come with helpful messages
